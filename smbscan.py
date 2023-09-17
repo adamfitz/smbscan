@@ -9,7 +9,7 @@ import socket
 
 
 
-def main():
+def main(network: str):
     """
     scan a subnet, find targets with open smb ports, attempt to enumerate unprotected shares
     """
@@ -19,3 +19,18 @@ def main():
     
 
 
+
+if __name__ == "__main__":
+    print(r"""
+               _
+              | |
+ ___ _ __ ___ | |__  ___  ___ __ _ _ __
+/ __| '_ ` _ \| '_ \/ __|/ __/ _` | '_ \
+\__ \ | | | | | |_) \__ \ (_| (_| | | | |
+|___/_| |_| |_|_.__/|___/\___\__,_|_| |_|""""\n")
+
+    try:
+        network = argv[1]
+        main(network)
+    except IndexError as missing_argument:
+        print("A network argument is required, example:\n$ smbscanner.py 10.0.0.0/24")
