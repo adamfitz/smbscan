@@ -8,6 +8,35 @@ import ipaddress
 import socket
 
 import tqdm
+from smb.SMBConnection import SMBConnection
+
+
+def enumerate_shares(username='guest', password="", port_445=None):
+    """
+    Function to enumerate a list of target IPs for smb shares.
+
+    By default connections are attempted with the guest user and no password, to find open shares.
+    """
+
+    for target in port_445:
+        try:
+            smbconnect = SMBConnection(username,
+                                    password,
+                                    is_direct_tcp=True,
+                                    my_name='test_client',
+                                    remote_name=socket.gethostbyname(target))
+            assert smbconnect.connect(target, 445, timeout=10)
+            share_list = smbconnect.listShares()
+            for i in share_list:
+                print(f"Sharename: {i.name}")
+        except AssertionError as assert_error:
+            print(f"Cannot list shares from {target} on port: {445}")
+            pass
+
+
+
+
+
 
 
 def main(network: str):
@@ -52,8 +81,10 @@ def main(network: str):
 
                         # port is open add target to the list
                         if port == 139:
+                            machine_name = socket.gethostbyname(ip)
                             open_targets_p139.append(ip)
                         else:
+                            machine_name = socket.gethostbyname(ip)
                             open_targets_p445.append(ip)
 
                     except socket.error as socket_error:
@@ -69,6 +100,9 @@ def main(network: str):
 
     except ValueError as invalid_ip_block:
         print(f"\nError: Invalid address block\n{invalid_ip_block}")
+
+
+    enumerate_shares(port_445=open_targets_p445)
 
 
 if __name__ == "__main__":
