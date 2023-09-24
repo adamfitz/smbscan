@@ -23,6 +23,11 @@ def main(network: str):
 
         # create a generator containing each IP as string
         hosts = map(str, address_block)
+
+        # total hosts
+        total_hosts = ipaddress.ip_network(network).num_addresses
+        print(f"Total scans to execute: {total_hosts}")
+
         
         # iterate the target network or host
         for ip in hosts:
