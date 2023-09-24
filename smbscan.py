@@ -7,6 +7,8 @@ from sys import argv
 import ipaddress
 import socket
 
+import tqdm
+
 
 def main(network: str):
     """
@@ -25,35 +27,42 @@ def main(network: str):
         hosts = map(str, address_block)
 
         # total hosts
-        total_hosts = ipaddress.ip_network(network).num_addresses
-        print(f"Total scans to execute: {total_hosts}")
+        total_hosts = (ipaddress.ip_network(network).num_addresses) - 2
 
-        
+        # ouput
+        print(f"Scanning Network:\t\t{network}")
+        print(f"Total hosts to scan: \t\t{total_hosts}")
+        print(f"Total scans ({len(smb_ports)} ports):\t\t{total_hosts * 2}")
+
+
         # iterate the target network or host
-        for ip in hosts:
+        with tqdm.tqdm(total=(total_hosts * 2)) as progress_bar:
+            for ip in hosts:
             # iterate each port in the smb_ports list
-            for port in smb_ports:
-                try:
-                    # setup the connection
-                    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                for port in smb_ports:
+                    try:
+                        # setup the connection
+                        connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-                    # low timeout value so the script is quicker
-                    connection.settimeout(1)
-                    
-                    # attempt connection
-                    connection.connect((ip, int(port)))
+                        # low timeout value so the script is quicker
+                        connection.settimeout(1)
 
-                    # port is open add target to the list
-                    if port == 139:
-                        open_targets_p139.append(ip)
-                    else:
-                        open_targets_p445.append(ip)
-                    
-                except socket.error as socket_error:
-                    continue
-                finally:
-                    # close connection after each connection attempt
-                    connection.close()
+                        # attempt connection
+                        connection.connect((ip, int(port)))
+
+                        # port is open add target to the list
+                        if port == 139:
+                            open_targets_p139.append(ip)
+                        else:
+                            open_targets_p445.append(ip)
+
+                    except socket.error as socket_error:
+                        # update the progress bar manually when an error is raised.
+                        progress_bar.update(1)
+                        continue
+                    finally:
+                        # close connection after each connection attempt
+                        connection.close()
 
         print(f"Targets listening on port 139:\n{open_targets_p139}\n")
         print(f"Targets listening on port 445:\n{open_targets_p445}\n")
