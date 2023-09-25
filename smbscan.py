@@ -81,11 +81,11 @@ def main(network: str):
 
                         # port is open add target to the list
                         if port == 139:
-                            machine_name = socket.gethostbyname(ip)
                             open_targets_p139.append(ip)
+                            progress_bar.update(1)
                         else:
-                            machine_name = socket.gethostbyname(ip)
                             open_targets_p445.append(ip)
+                            progress_bar.update(1)
 
                     except socket.error as socket_error:
                         # update the progress bar manually when an error is raised.
