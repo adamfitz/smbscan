@@ -7,32 +7,77 @@ from sys import argv
 import ipaddress
 import socket
 
+from typing import Dict
+
 import tqdm
 from smb.SMBConnection import SMBConnection
 
 
-def enumerate_shares(username='guest', password="", port_445=None):
+def enumerate_shares(port_445: list, username: str='guest', password: str="") -> Dict:
     """
     Function to enumerate a list of target IPs for smb shares.
 
     By default connections are attempted with the guest user and no password, to find open shares.
     """
 
+
+    result= {}
+
     for target in port_445:
+        # list to contain share names
+        shares = []
         try:
             smbconnect = SMBConnection(username,
                                     password,
                                     is_direct_tcp=True,
                                     my_name='test_client',
-                                    remote_name=socket.gethostbyname(target))
+                                    remote_name=target)
+            # test smb connection
             assert smbconnect.connect(target, 445, timeout=10)
+
+            # list found shares
             share_list = smbconnect.listShares()
+
+            # enumerate shares
             for i in share_list:
-                print(f"Sharename: {i.name}")
+                shares.append(i.name)
+            result[target] = shares
         except AssertionError as assert_error:
             print(f"Cannot list shares from {target} on port: {445}")
             pass
 
+    try:
+        print("Enumerating share contents")
+        for host in result.keys():
+            for i in result[host]:
+                print(i)
+                file_list = smbconnect.listPath(i, '/')
+                if file_list[5].isDirectory:
+                    print(file_list[5].filename)
+                    dir_name = file_list[5].filename
+                    # try enumerate the files in the share
+                    print(smbconnect.listPath(i, f"{dir_name}"))
+                else:
+                    print(file_list.filename)
+    except Exception:
+        pass
+
+
+    print(f"List of shares found on targets:\n{result}")
+
+
+
+def list_directories(input: Dict[str, list]) -> Dict:
+    """
+    Function to list the directory / file contents of a smb share
+
+    params: Input dict keys are the targets (hostname/IPs)
+    params: Input dict values are a list of the share names found on the targets
+    returns: Nested dict containing target hostname/IP (key), with lvalue as a dict containing thje share name as key
+    and a list of share contents as the value.
+    """
+
+    targets = input.keys()
 
 
 
@@ -58,7 +103,7 @@ def main(network: str):
         # total hosts
         total_hosts = (ipaddress.ip_network(network).num_addresses) - 2
 
-        # ouput
+        # output
         print(f"Scanning Network:\t\t{network}")
         print(f"Total hosts to scan: \t\t{total_hosts}")
         print(f"Total scans ({len(smb_ports)} ports):\t\t{total_hosts * 2}")
