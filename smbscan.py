@@ -21,8 +21,9 @@ def enumerate_shares(port_445: list, username: str='guest', password: str="") ->
     """
 
 
-    result= {}
+    result = {}
 
+    # get all the share names from the target host
     for target in port_445:
         # list to contain share names
         shares = []
@@ -43,44 +44,43 @@ def enumerate_shares(port_445: list, username: str='guest', password: str="") ->
                 shares.append(i.name)
             result[target] = shares
         except AssertionError as assert_error:
-            print(f"Cannot list shares from {target} on port: {445}")
-            pass
+            print(f"The guest account cannot list shares from target: {target} on port: {445}")
+            continue
 
-    try:
-        print("Enumerating share contents")
-        for host in result.keys():
-            for i in result[host]:
-                print(i)
-                file_list = smbconnect.listPath(i, '/')
-                if file_list[5].isDirectory:
-                    print(file_list[5].filename)
-                    dir_name = file_list[5].filename
-                    # try enumerate the files in the share
-                    print(smbconnect.listPath(i, f"{dir_name}"))
-                else:
-                    print(file_list.filename)
-    except Exception:
-        pass
+    return result
 
 
-    print(f"List of shares found on targets:\n{result}")
-
-
-
-def list_directories(input: Dict[str, list]) -> Dict:
+def list_files(share_names: list, username: str='guest', password: str="") -> Dict:
     """
-    Function to list the directory / file contents of a smb share
+    Function to enumerate the files in a list of smb shares.
 
-    params: Input dict keys are the targets (hostname/IPs)
-    params: Input dict values are a list of the share names found on the targets
-    returns: Nested dict containing target hostname/IP (key), with lvalue as a dict containing thje share name as key
-    and a list of share contents as the value.
+    By default connections are attempted with the guest user and no password, to find files open to anyone.
     """
 
-    targets = input.keys()
+    #iterate all target host share files
+    for host in share_names.keys():
+        smbconnect = SMBConnection(username,
+                                    password,
+                                    is_direct_tcp=True,
+                                    my_name='test_client',
+                                    remote_name=host)
+        # test smb connection
+        assert smbconnect.connect(host, 445, timeout=10)
 
 
-
+        try:
+            print(f"Enumerating share contents from host: {host}")
+            for share_name in share_names[host]:
+                if "$" not in share_name:
+                    #print(type(result[host]))
+                    print(f"Files found in share: {share_name}")
+                    file_list = smbconnect.listPath(share_name, '/')
+                    for element in file_list:
+                        print(element.filename)
+        except Exception as file_list_error:
+            print("Exception!")
+            print(file_list_error)
+            continue
 
 
 
@@ -147,7 +147,10 @@ def main(network: str):
         print(f"\nError: Invalid address block\n{invalid_ip_block}")
 
 
-    enumerate_shares(port_445=open_targets_p445)
+    target_shares = enumerate_shares(port_445=open_targets_p445)
+
+
+    list_files(share_names=target_shares)
 
 
 if __name__ == "__main__":
