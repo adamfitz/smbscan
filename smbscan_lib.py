@@ -3,6 +3,7 @@ Helper functions
 """
 
 import logging
+import os
 
 def load_file(input_file: str):
     """
@@ -12,14 +13,17 @@ def load_file(input_file: str):
         input_file: str, path to and filename of text file containing usernames or passwords
 
     File format:
-        Function expects one username or password per line.
+        Function expects one entry (username or password) per line.
 
     Returns:
         List of usernames or passwords in string format.
     """
 
+
     try:
-        with open(input_file, 'r', encoding='utf-8') as input_data:
+        # get the absolute file path    
+        file_path = os.path.abspath(input_file)
+        with open(file_path, 'r', encoding='utf-8') as input_data:
             # read entire file in one go and strip newlines and spaces from the end of each line
             usernames = [line.rstrip() for line in input_data]
         return usernames
