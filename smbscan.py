@@ -10,6 +10,7 @@ import socket
 from typing import Dict
 
 import tqdm
+from smb import smb_structs
 from smb.SMBConnection import SMBConnection
 
 
@@ -57,8 +58,13 @@ def list_files(share_names: list, username: str='guest', password: str="") -> Di
     By default connections are attempted with the guest user and no password, to find files open to anyone.
     """
 
-    #iterate all target host share files
+    # list of shares to exclude from file enumeration
+    exclude = ['NETLOGON', 'SYSVOL', 'C$', 'IPC$', 'ADMIN$']
+
+    # connect to each host
     for host in share_names.keys():
+        print(f'Share names for host: {host}\n{share_names.values()}')
+        print(f"Enumerating share contents from host: {host}")
         smbconnect = SMBConnection(username,
                                     password,
                                     is_direct_tcp=True,
@@ -67,20 +73,19 @@ def list_files(share_names: list, username: str='guest', password: str="") -> Di
         # test smb connection
         assert smbconnect.connect(host, 445, timeout=10)
 
-
-        try:
-            print(f"Enumerating share contents from host: {host}")
-            for share_name in share_names[host]:
-                if "$" not in share_name:
+        #iterate all target host share files
+        for share_name in share_names[host]:
+            try:
+                if share_name not in exclude:
                     #print(type(result[host]))
                     print(f"Files found in share: {share_name}")
                     file_list = smbconnect.listPath(share_name, '/')
                     for element in file_list:
                         print(element.filename)
-        except Exception as file_list_error:
-            print("Exception!")
-            print(file_list_error)
-            continue
+            except smb_structs.OperationFailure as unable_to_open_directory:
+                print(f"Exception! Unable to open directory for share: {share_name}")
+                #print(unable_to_open_directory)
+                pass
 
 
 
